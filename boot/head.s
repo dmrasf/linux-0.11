@@ -141,6 +141,7 @@ after_page_tables:
 	pushl $L6		# return address for main, if it decides to.
 	pushl $main
 	jmp setup_paging
+    # 从main返回会死机
 L6:
 	jmp L6			# main should never return here, but
 				# just in case, we know what happens.
@@ -217,6 +218,7 @@ setup_paging:
 	movl %cr0,%eax
 	orl $0x80000000,%eax
 	movl %eax,%cr0		/* set paging (PG) bit */
+    # 相当于 pop IP 也就是main函数
 	ret			/* this also flushes prefetch-queue */
 
 .align 2

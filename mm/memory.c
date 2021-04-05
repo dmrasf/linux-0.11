@@ -406,6 +406,7 @@ void mem_init(long start_mem, long end_mem)
 		mem_map[i] = USED;
 	i = MAP_NR(start_mem);
 	end_mem -= start_mem;
+    // 4k
 	end_mem >>= 12;
 	while (end_mem-->0)
 		mem_map[i++]=0;
