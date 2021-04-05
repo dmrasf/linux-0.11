@@ -66,6 +66,12 @@ int copy_mem(int nr,struct task_struct * p)
  * information (task[nr]) and sets up the necessary registers. It
  * also copies the data segment in it's entirety.
  */
+// sys_fork 系统调用的处理函数
+// ① CPU 执行中断指令压入的用户栈地址 ss 和 esp、标志 eflags 和返回地址 cs 和 eip；
+// ② 第 85--91 行在刚进入 system_call 时入栈的段寄存器 ds、es、fs 和 edx、ecx、ebx；
+// ③ 第 97 行上调用 sys_call_table 中 sys_fork 函数时入栈的返回地址（参数 none 表示）；
+// ④ 第 226--230 行在调用 copy_process()之前入栈的 gs、esi、edi、ebp 和 eax（nr）。
+// 其中参数 nr 是调用 find_empty_process()分配的任务数组项号。
 int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 		long ebx,long ecx,long edx,
 		long fs,long es,long ds,
@@ -75,10 +81,12 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	int i;
 	struct file *f;
 
+    // 为新任务分配内存
 	p = (struct task_struct *) get_free_page();
 	if (!p)
 		return -EAGAIN;
 	task[nr] = p;
+    // 复制进程结构
 	*p = *current;	/* NOTE! this doesn't copy the supervisor stack */
 	p->state = TASK_UNINTERRUPTIBLE;
 	p->pid = last_pid;
@@ -90,11 +98,14 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->utime = p->stime = 0;
 	p->cutime = p->cstime = 0;
 	p->start_time = jiffies;
+    // 修改任务状态段TSS内容
 	p->tss.back_link = 0;
+    // ss0:esp0 用作内核栈
 	p->tss.esp0 = PAGE_SIZE + (long) p;
 	p->tss.ss0 = 0x10;
 	p->tss.eip = eip;
 	p->tss.eflags = eflags;
+    // fork返回0
 	p->tss.eax = 0;
 	p->tss.ecx = ecx;
 	p->tss.edx = edx;

@@ -2,6 +2,7 @@
 #define _HEAD_H
 
 typedef struct desc_struct {
+    // 32位
 	unsigned long a,b;
 } desc_table[256];
 

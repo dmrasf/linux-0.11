@@ -152,8 +152,11 @@ extern void wake_up(struct task_struct ** p);
  * Entry into gdt where to find first TSS. 0-nul, 1-cs, 2-ds, 3-syscall
  * 4-TSS0, 5-LDT0, 6-TSS1 etc ...
  */
+// 全局表中第一个任务的状态段（TSS）
 #define FIRST_TSS_ENTRY 4
+// 全局表中第一个任务的局部描述符表
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
+// 计算在GDT中的偏移
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
 #define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
 #define ltr(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
@@ -170,6 +173,7 @@ __asm__("str %%ax\n\t" \
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
  */
+// 每个任务都对应一个独立的TSS和LDT 保存在GDT中
 #define switch_to(n) {\
 struct {long a,b;} __tmp; \
 __asm__("cmpl %%ecx,current\n\t" \
