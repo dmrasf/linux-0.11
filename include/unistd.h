@@ -129,6 +129,8 @@
 #define __NR_ssetmask	69
 #define __NR_setreuid	70
 #define __NR_setregid	71
+#define __NR_iam 72
+#define __NR_whoami 73
 
 #define _syscall0(type,name) \
 type name(void) \
@@ -169,6 +171,25 @@ errno = -__res; \
 return -1; \
 }
 
+// __NR_write = 4
+
+// _syscall3(int,write,int,fd,const char *,buf,off_t,count);
+// int write(int fd, const char *buf, off_t count)
+// {
+//    long __res;
+// 查询IDT表，执行相应函数 linux/include/asm/system.h
+//    __asm__ volatile ("int $0x80" \
+// 返回值赋给 __res
+//        : "=a" (__res) \
+// __NR_write->eax fd->ebx buf->ecx count->edx
+//        : "0" (__NR_write),"b" ((long)(fd)),"c" ((long)(buf)),"d" ((long)(count))); \
+//    if (__res>=0)
+//        return (int) __res;
+//    errno=-__res;
+//    return -1;
+// }
+
+// int 0x80 将CS中的CPL置为0 进入内核 必须大于段描述符中的DPL
 #define _syscall3(type,name,atype,a,btype,b,ctype,c) \
 type name(atype a,btype b,ctype c) \
 { \
@@ -249,5 +270,7 @@ int dup2(int oldfd, int newfd);
 int getppid(void);
 pid_t getpgrp(void);
 pid_t setsid(void);
+int iam(const char * name);
+int whoami(char * name, unsigned int size);
 
 #endif

@@ -58,7 +58,7 @@ sa_mask = 4
 sa_flags = 8
 sa_restorer = 12
 
-nr_system_calls = 72
+nr_system_calls = 74
 
 /*
  * Ok, I get parallel printer interrupts while using the floppy for some
@@ -80,6 +80,7 @@ reschedule:
 system_call:
 	cmpl $nr_system_calls-1,%eax
 	ja bad_sys_call
+    # _syscall3 设置的参数
 	push %ds
 	push %es
 	push %fs
@@ -91,6 +92,7 @@ system_call:
 	mov %dx,%es
 	movl $0x17,%edx		# fs points to local data space
 	mov %dx,%fs
+    # linux/include/linux/sys.h
 	call sys_call_table(,%eax,4)
 	pushl %eax
 	movl current,%eax

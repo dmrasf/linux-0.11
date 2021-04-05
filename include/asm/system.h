@@ -19,6 +19,11 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 
 #define iret() __asm__ ("iret"::)
 
+// gate_addr -描述符地址；type -描述符类型域值；dpl -描述符特权级；addr -偏移地址。
+// %0 - (由 dpl,type 组合成的类型标志字)；%1 - (描述符低 4 字节地址)；
+// %2 - (描述符高 4 字节地址)；%3 - edx(程序偏移地址 addr)；%4 - eax(高字中含有段选择符 0x8)。
+// gdt 初始化在setup.s初始化好
+// 设置中断处理 内核函数的DPL被设置为3,可以调用中断函数
 #define _set_gate(gate_addr,type,dpl,addr) \
 __asm__ ("movw %%dx,%%ax\n\t" \
 	"movw %0,%%dx\n\t" \
@@ -36,6 +41,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 #define set_trap_gate(n,addr) \
 	_set_gate(&idt[n],15,0,addr)
 
+// 0x80 设置DPL=3
 #define set_system_gate(n,addr) \
 	_set_gate(&idt[n],15,3,addr)
 
