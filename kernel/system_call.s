@@ -186,6 +186,7 @@ timer_interrupt:
 	mov %ax,%es
 	movl $0x17,%eax
 	mov %ax,%fs
+    # 增加jiffies的值
 	incl jiffies
 	movb $0x20,%al		# EOI to interrupt controller #1
 	outb %al,$0x20

@@ -138,6 +138,7 @@ int sys_exit(int error_code)
 	return do_exit((error_code&0xff)<<8);
 }
 
+// 父进程等待子进程退出
 int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
 {
 	int flag, code;
@@ -172,6 +173,7 @@ repeat:
 				current->cstime += (*p)->stime;
 				flag = (*p)->pid;
 				code = (*p)->exit_code;
+				fprintk(3, "%ld\tE\t%ld\n", (*p)->pid, jiffies);
 				release(*p);
 				put_fs_long(code,stat_addr);
 				return flag;
@@ -184,6 +186,9 @@ repeat:
 		if (options & WNOHANG)
 			return 0;
 		current->state=TASK_INTERRUPTIBLE;
+		// 有子进程
+		if (current->pid != 0)
+			fprintk(3, "%ld\tW\t%ld\n", current->pid, jiffies);
 		schedule();
 		if (!(current->signal &= ~(1<<(SIGCHLD-1))))
 			goto repeat;

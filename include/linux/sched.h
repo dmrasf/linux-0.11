@@ -1,8 +1,9 @@
 #ifndef _SCHED_H
 #define _SCHED_H
 
+// 系统中同时最多进程数
 #define NR_TASKS 64
-#define HZ 100
+#define HZ 200
 
 #define FIRST_TASK task[0]
 #define LAST_TASK task[NR_TASKS-1]
@@ -16,10 +17,15 @@
 #error "Currently the close-on-exec-flags are in one word, max 32 files/proc"
 #endif
 
+// 就绪或运行
 #define TASK_RUNNING		0
+// 可中断睡眠
 #define TASK_INTERRUPTIBLE	1
+// 不可中断睡眠
 #define TASK_UNINTERRUPTIBLE	2
+// 僵死
 #define TASK_ZOMBIE		3
+// 停止
 #define TASK_STOPPED		4
 
 #ifndef NULL
@@ -79,6 +85,7 @@ struct tss_struct {
 
 struct task_struct {
 /* these are hardcoded - don't touch */
+    // 进程的5种状态
 	long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
 	long counter;
 	long priority;

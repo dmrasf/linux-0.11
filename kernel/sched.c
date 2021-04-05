@@ -43,6 +43,7 @@ void show_stat(void)
 			show_task(i,task[i]);
 }
 
+// HZ = 100 定时芯片时钟频率为1.193180MHz 
 #define LATCH (1193180/HZ)
 
 extern void mem_use(void);
@@ -57,6 +58,7 @@ union task_union {
 
 static union task_union init_task = {INIT_TASK,};
 
+// 记录了从开机到当前时间时钟中断发生次数
 long volatile jiffies=0;
 long startup_time=0;
 struct task_struct *current = &(init_task.task);
@@ -110,13 +112,17 @@ void schedule(void)
 
 	for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 		if (*p) {
+			// 如果设置过alarm并且超出时间，发信号终止进程
 			if ((*p)->alarm && (*p)->alarm < jiffies) {
 					(*p)->signal |= (1<<(SIGALRM-1));
 					(*p)->alarm = 0;
 				}
 			if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
-			(*p)->state==TASK_INTERRUPTIBLE)
+			(*p)->state==TASK_INTERRUPTIBLE) {
 				(*p)->state=TASK_RUNNING;
+				// 队列里的进程变为就绪态
+				fprintk(3, "%ld\tJ\t%ld\n", (*p)->pid, jiffies);
+			}
 		}
 
 /* this is the scheduler proper: */
@@ -138,11 +144,23 @@ void schedule(void)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
 	}
+
+	// 运行态 如果当前和下一个相同则跳过
+	if (task[next]->pid != current->pid) {
+		// 当前进程时间片到期，出让CPU
+		if (current->state == TASK_RUNNING)
+			fprintk(3, "%ld\tJ\t%ld\n", current->pid, jiffies);
+		fprintk(3, "%ld\tR\t%ld\n", task[next]->pid, jiffies);
+	}
+
 	switch_to(next);
 }
 
+// main.c 中的pause()系统调用
 int sys_pause(void)
 {
+    if (current->state != TASK_INTERRUPTIBLE)
+		fprintk(3, "%ld\tW\t%ld\n", current->pid, jiffies);
 	current->state = TASK_INTERRUPTIBLE;
 	schedule();
 	return 0;
@@ -156,12 +174,18 @@ void sleep_on(struct task_struct **p)
 		return;
 	if (current == &(init_task.task))
 		panic("task[0] trying to sleep");
+    // 保存上一个等待的任务
 	tmp = *p;
+    // 将队列头设置为当前进程
 	*p = current;
 	current->state = TASK_UNINTERRUPTIBLE;
+	fprintk(3, "%ld\tW\t%ld\n", current->pid, jiffies);
 	schedule();
-	if (tmp)
+    // 判断上一个是否为空 叫醒上一个 由 wake_up 到此
+	if (tmp) {
 		tmp->state=0;
+		fprintk(3, "%ld\tJ\t%ld\n", tmp->pid, jiffies);
+    }
 }
 
 void interruptible_sleep_on(struct task_struct **p)
@@ -172,23 +196,32 @@ void interruptible_sleep_on(struct task_struct **p)
 		return;
 	if (current == &(init_task.task))
 		panic("task[0] trying to sleep");
+    // 原来的头指针
 	tmp=*p;
 	*p=current;
 repeat:	current->state = TASK_INTERRUPTIBLE;
+	fprintk(3, "%ld\tW\t%ld\n", current->pid, jiffies);
 	schedule();
+    // 当前为可中断等待，需要判断是否为第一个
 	if (*p && *p != current) {
+		// 设置第一个任务为就绪
 		(**p).state=0;
+		fprintk(3, "%ld\tJ\t%ld\n", (**p).pid, jiffies);
 		goto repeat;
 	}
 	*p=NULL;
-	if (tmp)
+	if (tmp) {
 		tmp->state=0;
+		fprintk(3, "%ld\tJ\t%ld\n", tmp->pid, jiffies);
+    }
 }
 
 void wake_up(struct task_struct **p)
 {
 	if (p && *p) {
 		(**p).state=0;
+		// 等待队列中第一个任务
+		fprintk(3, "%ld\tJ\t%ld\n", (**p).pid, jiffies);
 		*p=NULL;
 	}
 }
@@ -403,9 +436,13 @@ void sched_init(void)
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
 	ltr(0);
 	lldt(0);
+    // 初始化8253定时器 IRQ0 每10毫秒
 	outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
+    // 定时器高字节
 	outb_p(LATCH & 0xff , 0x40);	/* LSB */
+    // 定时器低字节
 	outb(LATCH >> 8 , 0x40);	/* MSB */
+    // 设置时钟中断处理函数
 	set_intr_gate(0x20,&timer_interrupt);
 	outb(inb_p(0x21)&~0x01,0x21);
 	set_system_gate(0x80,&system_call);

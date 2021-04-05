@@ -78,17 +78,21 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p = (struct task_struct *) get_free_page();
 	if (!p)
 		return -EAGAIN;
+    // nr 为进程号 由find_empty_process()返回
 	task[nr] = p;
 	*p = *current;	/* NOTE! this doesn't copy the supervisor stack */
 	p->state = TASK_UNINTERRUPTIBLE;
+    // 设置新进程的进程号  由find_empty_process获得
 	p->pid = last_pid;
 	p->father = current->pid;
 	p->counter = p->priority;
 	p->signal = 0;
 	p->alarm = 0;
 	p->leader = 0;		/* process leadership doesn't inherit */
+    // 用户态 核心态运行时间
 	p->utime = p->stime = 0;
 	p->cutime = p->cstime = 0;
+    // 设置进程开始时的时间
 	p->start_time = jiffies;
 	p->tss.back_link = 0;
 	p->tss.esp0 = PAGE_SIZE + (long) p;
@@ -113,11 +117,17 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->tss.trace_bitmap = 0x80000000;
 	if (last_task_used_math == current)
 		__asm__("clts ; fnsave %0"::"m" (p->tss.i387));
+    // 复制进程页表
 	if (copy_mem(nr,p)) {
 		task[nr] = NULL;
 		free_page((long) p);
 		return -EAGAIN;
 	}
+
+	// 实验三 新建进程
+	fprintk(3, "%ld\tN\t%ld\n", p->pid, jiffies);
+
+    // 新进程需要对文件计数加1
 	for (i=0; i<NR_OPEN;i++)
 		if ((f=p->filp[i]))
 			f->f_count++;
@@ -130,6 +140,10 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
 	set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
 	p->state = TASK_RUNNING;	/* do this last, just in case */
+
+	// 实验三 就绪
+	fprintk(3, "%ld\tJ\t%ld\n", p->pid, jiffies);
+
 	return last_pid;
 }
 
