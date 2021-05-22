@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define MAX_M 20
+#define MAX_M 500
 #define MAX_BUFFER 10
 #define PRO_NUM 3
 
@@ -17,8 +17,8 @@ int main(int argc, char* argv[])
 {
     char str[5];
     int fd;
-    int readstrlen;
-    sem_t *mutex, *empty, *full, *yt;
+    int readstrlen, first;
+    sem_t *mutex, *empty, *full;
     char c;
 
     sem_unlink("mutex");
@@ -69,8 +69,8 @@ int main(int argc, char* argv[])
                         break;
                 }
                 str[readstrlen] = '\0';
-                printf("%d: %s", pid, str);
-                int first = 0;
+                printf("consumer%d => %d:\t%s", i, pid, str);
+                first = 0;
                 while (1) {
                     lseek(fd, first + readstrlen, SEEK_SET);
                     if (read(fd, &c, 1) != 1)
@@ -93,6 +93,7 @@ int main(int argc, char* argv[])
         sprintf(str, "%d\n", i);
         lseek(fd, 0, SEEK_END);
         write(fd, str, strlen(str));
+        printf("producer => %d\n", i);
         sem_post(mutex);
         sem_post(full);
     }
