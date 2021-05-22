@@ -48,9 +48,10 @@ OLDSS		= 0x2C
 state	= 0		# these are offsets into the task-struct.
 counter	= 4
 priority = 8
-signal	= 12
-sigaction = 16		# MUST be 16 (=len of sigaction)
-blocked = (33*16)
+KERNEL_STACK = 12
+signal	= 16
+sigaction = 20		# MUST be 16 (=len of sigaction)
+blocked = (33*16+4)
 
 # offsets within sigaction
 sa_handler = 0
@@ -67,6 +68,7 @@ nr_system_calls = 72
 .globl system_call,sys_fork,timer_interrupt,sys_execve
 .globl hd_interrupt,floppy_interrupt,parallel_interrupt
 .globl device_not_available, coprocessor_error
+.globl first_return_from_kernel, switch_to
 
 .align 2
 bad_sys_call:
@@ -283,3 +285,62 @@ parallel_interrupt:
 	outb %al,$0x20
 	popl %eax
 	iret
+
+.align 2
+switch_to:
+    pushl %ebp
+    # ebp 中保存栈指针用于读取switch_to 参数
+    movl %esp,%ebp
+    pushl %ecx
+    pushl %ebx
+    pushl %eax
+
+    # 读取pnext参数 pushl每次4字节
+    movl 8(%ebp),%ebx
+    # current 全局变量保存当前进程
+    cmpl %ebx,current
+    # 若两个进程相同退出
+    je 1f
+
+    movl %ebx,%eax
+    # 切换pcb指针
+    xchgl %eax,current
+
+    # 全局tss
+    movl tss,%ecx
+    # 保存内核栈底部
+    addl $4096,%ebx
+    movl %ebx,4(%ecx)
+
+    # 切换内核栈
+    movl %esp,KERNEL_STACK(%eax)
+    movl 8(%ebp),%ebx
+    movl KERNEL_STACK(%ebx),%esp
+
+    # 切换LDT
+    movl 12(%ebp),%ecx
+    lldt %cx
+
+    movl $0x17,%ecx
+    mov %cx,%fs
+
+    cmpl %eax,last_task_used_math
+    jne 1f
+    clts
+
+1:  popl %eax
+    popl %ebx
+    popl %ecx
+    popl %ebp
+ret
+
+.align 2
+first_return_from_kernel:
+    popl %edx
+    popl %edi
+    popl %esi
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+    iret

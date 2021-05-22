@@ -18,6 +18,7 @@
 #include <asm/system.h>
 
 extern void write_verify(unsigned long address);
+extern void first_return_from_kernel(void);
 
 long last_pid=0;
 
@@ -80,6 +81,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	struct task_struct *p;
 	int i;
 	struct file *f;
+    long *kernelstack;
 
     // 为新任务分配内存
 	p = (struct task_struct *) get_free_page();
@@ -98,30 +100,54 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->utime = p->stime = 0;
 	p->cutime = p->cstime = 0;
 	p->start_time = jiffies;
-    // 修改任务状态段TSS内容
-	p->tss.back_link = 0;
-    // ss0:esp0 用作内核栈
-	p->tss.esp0 = PAGE_SIZE + (long) p;
-	p->tss.ss0 = 0x10;
-	p->tss.eip = eip;
-	p->tss.eflags = eflags;
-    // fork返回0
-	p->tss.eax = 0;
-	p->tss.ecx = ecx;
-	p->tss.edx = edx;
-	p->tss.ebx = ebx;
-	p->tss.esp = esp;
-	p->tss.ebp = ebp;
-	p->tss.esi = esi;
-	p->tss.edi = edi;
-	p->tss.es = es & 0xffff;
-	p->tss.cs = cs & 0xffff;
-	p->tss.ss = ss & 0xffff;
-	p->tss.ds = ds & 0xffff;
-	p->tss.fs = fs & 0xffff;
-	p->tss.gs = gs & 0xffff;
-	p->tss.ldt = _LDT(nr);
-	p->tss.trace_bitmap = 0x80000000;
+
+    kernelstack = (long*)(PAGE_SIZE + (long)p);
+    *(--kernelstack) = ss & 0xffff;
+    *(--kernelstack) = esp;
+    *(--kernelstack) = eflags;
+    *(--kernelstack) = cs & 0xffff;
+    *(--kernelstack) = eip;
+
+    *(--kernelstack) = ds & 0xffff;
+    *(--kernelstack) = es & 0xffff;
+    *(--kernelstack) = fs & 0xffff;
+    *(--kernelstack) = gs & 0xffff;
+    *(--kernelstack) = esi;
+    *(--kernelstack) = edi;
+    *(--kernelstack) = edx;
+    *(--kernelstack) = (long)first_return_from_kernel;
+
+    *(--kernelstack) = ebp;
+    *(--kernelstack) = ecx;
+    *(--kernelstack) = ebx;
+    *(--kernelstack) = 0;
+
+    p->kernelstack = (long)kernelstack;
+
+    /*// 修改任务状态段TSS内容*/
+	/*p->tss.back_link = 0;*/
+    /*// ss0:esp0 用作内核栈*/
+	/*p->tss.esp0 = PAGE_SIZE + (long) p;*/
+	/*p->tss.ss0 = 0x10;*/
+	/*p->tss.eip = eip;*/
+	/*p->tss.eflags = eflags;*/
+    /*// fork返回0*/
+	/*p->tss.eax = 0;*/
+	/*p->tss.ecx = ecx;*/
+	/*p->tss.edx = edx;*/
+	/*p->tss.ebx = ebx;*/
+	/*p->tss.esp = esp;*/
+	/*p->tss.ebp = ebp;*/
+	/*p->tss.esi = esi;*/
+	/*p->tss.edi = edi;*/
+	/*p->tss.es = es & 0xffff;*/
+	/*p->tss.cs = cs & 0xffff;*/
+	/*p->tss.ss = ss & 0xffff;*/
+	/*p->tss.ds = ds & 0xffff;*/
+	/*p->tss.fs = fs & 0xffff;*/
+	/*p->tss.gs = gs & 0xffff;*/
+	/*p->tss.ldt = _LDT(nr);*/
+	/*p->tss.trace_bitmap = 0x80000000;*/
 	if (last_task_used_math == current)
 		__asm__("clts ; fnsave %0"::"m" (p->tss.i387));
 	if (copy_mem(nr,p)) {

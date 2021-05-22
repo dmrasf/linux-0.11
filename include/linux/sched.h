@@ -82,6 +82,7 @@ struct task_struct {
 	long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
 	long counter;
 	long priority;
+    long kernelstack;
 	long signal;
 	struct sigaction sigaction[32];
 	long blocked;	/* bitmap of masked signals */
@@ -114,6 +115,7 @@ struct task_struct {
  */
 #define INIT_TASK \
 /* state etc */	{ 0,15,15, \
+/* kernelstack */PAGE_SIZE+(long)&init_task,\
 /* signals */	0,{{},},0, \
 /* ec,brk... */	0,0,0,0,0,0, \
 /* pid etc.. */	0,-1,0,0,0, \
@@ -174,20 +176,22 @@ __asm__("str %%ax\n\t" \
  * tha math co-processor latest.
  */
 // 每个任务都对应一个独立的TSS和LDT 保存在GDT中
-#define switch_to(n) {\
-struct {long a,b;} __tmp; \
-__asm__("cmpl %%ecx,current\n\t" \
-	"je 1f\n\t" \
-	"movw %%dx,%1\n\t" \
-	"xchgl %%ecx,current\n\t" \
-	"ljmp *%0\n\t" \
-	"cmpl %%ecx,last_task_used_math\n\t" \
-	"jne 1f\n\t" \
-	"clts\n" \
-	"1:" \
-	::"m" (*&__tmp.a),"m" (*&__tmp.b), \
-	"d" (_TSS(n)),"c" ((long) task[n])); \
-}
+// %0 指向_tmp %1 指向_tmp.b
+// dx 新任务n的TSS段选择符
+//#define switch_to(n) {\
+//struct {long a,b;} __tmp; \
+//__asm__("cmpl %%ecx,current\n\t" \
+	//"je 1f\n\t" \
+	//"movw %%dx,%1\n\t" \
+	//"xchgl %%ecx,current\n\t" \
+	//"ljmp *%0\n\t" \
+	//"cmpl %%ecx,last_task_used_math\n\t" \
+	//"jne 1f\n\t" \
+	//"clts\n" \
+	//"1:" \
+	//::"m" (*&__tmp.a),"m" (*&__tmp.b), \
+	//"d" (_TSS(n)),"c" ((long) task[n])); \
+//}
 
 #define PAGE_ALIGN(n) (((n)+0xfff)&0xfffff000)
 
