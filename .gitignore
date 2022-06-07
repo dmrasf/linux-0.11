@@ -1,2 +1,14 @@
-.cache
-compile_commands.json
+.*
+*.a
+*.o
+
+/kernel/chr_drv/keyboard.s
+/boot
+!/boot/bootsect.s
+!/boot/setup.s
+!/boot/head.s
+/tools
+!/tools/build.c
+/Image
+/System.map
+/compile_commands.json
