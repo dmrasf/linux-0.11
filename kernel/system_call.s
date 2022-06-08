@@ -51,7 +51,7 @@ priority = 8
 KERNEL_STACK = 12
 signal	= 16
 sigaction = 20		# MUST be 16 (=len of sigaction)
-blocked = (33*16+4)
+blocked = (37*16)
 
 # offsets within sigaction
 sa_handler = 0
@@ -287,10 +287,12 @@ parallel_interrupt:
 	iret
 
 .align 2
+# extern int switch_to(struct task_struct*, unsigned long);
 switch_to:
-    pushl %ebp
     # ebp 中保存栈指针用于读取switch_to 参数
+    pushl %ebp
     movl %esp,%ebp
+
     pushl %ecx
     pushl %ebx
     pushl %eax
@@ -328,6 +330,7 @@ switch_to:
     jne 1f
     clts
 
+    # 已经是另一个进程的工作
 1:  popl %eax
     popl %ebx
     popl %ecx

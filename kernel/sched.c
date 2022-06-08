@@ -49,7 +49,7 @@ extern void mem_use(void);
 
 extern int timer_interrupt(void);
 extern int system_call(void);
-extern int switch_to(struct task_struct*, unsigned long);
+extern void switch_to(struct task_struct*, unsigned long);
 
 union task_union {
 	struct task_struct task;
@@ -107,7 +107,8 @@ void math_state_restore()
 void schedule(void)
 {
 	int i,next,c;
-	struct task_struct ** p,*pnext;
+	struct task_struct ** p;
+    struct task_struct *pnext = &(init_task.task); // 初始化为0号进程的pcb
 
 /* check alarm, wake up any interruptible tasks that have got a signal */
 

@@ -102,12 +102,16 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->start_time = jiffies;
 
     kernelstack = (long*)(PAGE_SIZE + (long)p);
+
+    // 做出进入switch_to函数的样子，用于被调度时返回
+    // CPU自动弹入
     *(--kernelstack) = ss & 0xffff;
     *(--kernelstack) = esp;
     *(--kernelstack) = eflags;
     *(--kernelstack) = cs & 0xffff;
     *(--kernelstack) = eip;
 
+    // 给 first_return_from_kernel 使用
     *(--kernelstack) = ds & 0xffff;
     *(--kernelstack) = es & 0xffff;
     *(--kernelstack) = fs & 0xffff;
@@ -117,12 +121,13 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
     *(--kernelstack) = edx;
     *(--kernelstack) = (long)first_return_from_kernel;
 
+    // switch_to 中最后弹栈
     *(--kernelstack) = ebp;
     *(--kernelstack) = ecx;
     *(--kernelstack) = ebx;
     *(--kernelstack) = 0;
 
-    p->kernelstack = (long)kernelstack;
+    p->kernelstack = kernelstack;
 
     /*// 修改任务状态段TSS内容*/
 	/*p->tss.back_link = 0;*/
