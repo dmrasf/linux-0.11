@@ -75,7 +75,7 @@ sys.s sys.o: sys.c ../include/errno.h ../include/linux/sched.h \
   ../include/linux/head.h ../include/linux/fs.h ../include/sys/types.h \
   ../include/linux/mm.h ../include/signal.h ../include/linux/tty.h \
   ../include/termios.h ../include/linux/kernel.h ../include/asm/segment.h \
-  ../include/sys/times.h ../include/sys/utsname.h
+  ../include/sys/times.h ../include/sys/utsname.h ../include/semaphore.h ../include/asm/system.h
 traps.s traps.o: traps.c ../include/string.h ../include/linux/head.h \
   ../include/linux/sched.h ../include/linux/fs.h ../include/sys/types.h \
   ../include/linux/mm.h ../include/signal.h ../include/linux/kernel.h \

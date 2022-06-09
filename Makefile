@@ -36,7 +36,10 @@ LIBS	=lib/lib.a
 	$(CC) $(CFLAGS) \
 	-nostdinc -Iinclude -c -o $*.o $<
 
-all:	Image
+all:	Image pc
+
+pc: pc.c
+	gcc -o pc pc.c
 
 Image: boot/bootsect boot/setup tools/system tools/build
 	cp -f tools/system system.tmp
@@ -109,6 +112,7 @@ tmp.s:	boot/bootsect.s tools/system
 clean:
 	rm -f Image System.map tmp_make core boot/bootsect boot/setup
 	rm -f init/*.o tools/system tools/build boot/*.o
+	rm -f pc buffer
 	(cd mm;make clean)
 	(cd fs;make clean)
 	(cd kernel;make clean)
