@@ -319,14 +319,9 @@ int sys_sem_wait(sem_t *sem)
 
 int sys_sem_post(sem_t *sem)
 {
-    cli();
     sem->value++;
     // 只要有值，去唤醒等待队列中进程
-    while(sem->value > 0)
-        if (sem->queue == NULL)
-            break;
-        else
-            wake_up(&(sem->queue));
-    sti();
+    if(sem->value > 0)
+        wake_up(&(sem->queue));
     return 0;
 }
