@@ -87,6 +87,7 @@ struct task_struct {
 	long blocked;	/* bitmap of masked signals */
 /* various fields */
 	int exit_code;
+    // start_code 是代码段基地址，保存在ldt中 brk是长度相当于最多偏移地址
 	unsigned long start_code,end_code,end_data,brk,start_stack;
 	long pid,father,pgrp,session,leader;
 	unsigned short uid,euid,suid;
