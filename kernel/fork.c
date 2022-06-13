@@ -36,13 +36,15 @@ void verify_area(void * addr,int size)
 	}
 }
 
+// 只复制内存页表，不会申请物理内存，父子进程指向相同内存
 int copy_mem(int nr,struct task_struct * p)
 {
 	unsigned long old_data_base,new_data_base,data_limit;
 	unsigned long old_code_base,new_code_base,code_limit;
 
-	code_limit=get_limit(0x0f);
-	data_limit=get_limit(0x17);
+	code_limit=get_limit(0x0f); // 0b00001 111 代码段选择符 ldt[1]
+	data_limit=get_limit(0x17); // 0b00010 111 数据段选择符 ldt[2]
+    // ldt基地址
 	old_code_base = get_base(current->ldt[1]);
 	old_data_base = get_base(current->ldt[2]);
 	if (old_data_base != old_code_base)
@@ -53,6 +55,7 @@ int copy_mem(int nr,struct task_struct * p)
 	p->start_code = new_code_base;
 	set_base(p->ldt[1],new_code_base);
 	set_base(p->ldt[2],new_data_base);
+    // 复制页表指向的物理地址 因为代码段和数据段基地址相同，所以只复制数据段
 	if (copy_page_tables(old_data_base,new_data_base,data_limit)) {
 		printk("free_page_tables: from copy_mem\n");
 		free_page_tables(new_data_base,data_limit);

@@ -185,6 +185,7 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	struct m_inode * inode;
 	struct buffer_head * bh;
 	struct exec ex;
+    // 参数页面 32*4 128KB
 	unsigned long page[MAX_ARG_PAGES];
 	int i,argc,envc;
 	int e_uid, e_gid;
@@ -192,6 +193,7 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	int sh_bang = 0;
 	unsigned long p=PAGE_SIZE*MAX_ARG_PAGES-4;
 
+    // 判断代码段选择符是否为0x000f
 	if ((0xffff & eip[1]) != 0x000f)
 		panic("execve called from supervisor mode");
 	for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
@@ -236,6 +238,7 @@ restart_interp:
 		brelse(bh);
 		iput(inode);
 		buf[1022] = '\0';
+        // 遇到的第一个换行位置
 		if ((cp = strchr(buf, '\n'))) {
 			*cp = '\0';
 			for (cp = buf; (*cp == ' ') || (*cp == '\t'); cp++);

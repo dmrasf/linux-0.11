@@ -3,13 +3,17 @@
 *.o
 
 /kernel/chr_drv/keyboard.s
-/boot
+/boot/*
 !/boot/bootsect.s
 !/boot/setup.s
 !/boot/head.s
-/tools
+/tools/*
 !/tools/build.c
 /Image
 /System.map
 /system.tmp
 /compile_commands.json
+/shm/*
+!/shm/*.c
+!/shm/*.h
+!/shm/Makefile

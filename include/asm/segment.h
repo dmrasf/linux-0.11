@@ -18,6 +18,7 @@ static inline unsigned long get_fs_long(const unsigned long *addr)
 {
 	unsigned long _v;
 
+    // fs = 0x17 用户数据段 system_call.s 系统调用赋值
 	__asm__ ("movl %%fs:%1,%0":"=r" (_v):"m" (*addr)); \
 	return _v;
 }

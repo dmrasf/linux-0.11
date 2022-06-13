@@ -1,7 +1,7 @@
 /*
- *  linux/mm/memory.c
+ *	linux/mm/memory.c
  *
- *  (C) 1991  Linus Torvalds
+ *	(C) 1991  Linus Torvalds
  */
 
 /*
@@ -54,12 +54,14 @@ static long HIGH_MEMORY = 0;
 #define copy_page(from,to) \
 __asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024))
 
+// 15*256=3840
 static unsigned char mem_map [ PAGING_PAGES ] = {0,};
 
 /*
  * Get physical address of first (actually last :-) free page, and mark it
  * used. If no free pages left, return 0.
  */
+// 获取新内存页
 unsigned long get_free_page(void)
 {
 register unsigned long __res asm("ax");
@@ -131,7 +133,7 @@ int free_page_tables(unsigned long from,unsigned long size)
 }
 
 /*
- *  Well, here is one of the most complicated functions in mm. It
+ *	Well, here is one of the most complicated functions in mm. It
  * copies a range of linerar addresses by copying only the pages.
  * Let's hope this is bug-free, 'cause this one I don't want to debug :-)
  *
@@ -147,6 +149,7 @@ int free_page_tables(unsigned long from,unsigned long size)
  * 1 Mb-range, so the pages can be shared with the kernel. Thus the
  * special case for nr=xxxx.
  */
+// from to 都是线性基地址 size 为长度
 int copy_page_tables(unsigned long from,unsigned long to,long size)
 {
 	unsigned long * from_page_table;
@@ -157,18 +160,25 @@ int copy_page_tables(unsigned long from,unsigned long to,long size)
 
 	if ((from&0x3fffff) || (to&0x3fffff))
 		panic("copy_page_tables called with wrong alignment");
+	// (页目录项from>>22)*(页目录项大小4字节)
 	from_dir = (unsigned long *) ((from>>20) & 0xffc); /* _pg_dir = 0 */
 	to_dir = (unsigned long *) ((to>>20) & 0xffc);
+	// 页目录数
 	size = ((unsigned) (size+0x3fffff)) >> 22;
 	for( ; size-->0 ; from_dir++,to_dir++) {
+		// 页目录项最后一位表示是否使用
 		if (1 & *to_dir)
 			panic("copy_page_tables: already exist");
 		if (!(1 & *from_dir))
 			continue;
+		// 获取页表物理地址
 		from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
+		// 从mem_map中找到一个空闲4k内存当作页表 返回物理地址
 		if (!(to_page_table = (unsigned long *) get_free_page()))
 			return -1;	/* Out of memory, see freeing */
+		// 页目录项 = 高20位地址 | 低12位标志
 		*to_dir = ((unsigned long) to_page_table) | 7;
+		// 判断是否在内核空间640kb 4mb
 		nr = (from==0)?0xA0:1024;
 		for ( ; nr-- > 0 ; from_page_table++,to_page_table++) {
 			this_page = *from_page_table;
@@ -177,6 +187,7 @@ int copy_page_tables(unsigned long from,unsigned long to,long size)
 			this_page &= ~2;
 			*to_page_table = this_page;
 			if (this_page > LOW_MEM) {
+				// 源页表设置只读
 				*from_page_table = this_page;
 				this_page -= LOW_MEM;
 				this_page >>= 12;
@@ -194,6 +205,7 @@ int copy_page_tables(unsigned long from,unsigned long to,long size)
  * out of memory (either when trying to access page-table or
  * page.)
  */
+// page 新的页物理地址 address 线性地址 将新内存页与线性地址间建立映射
 unsigned long put_page(unsigned long page,unsigned long address)
 {
 	unsigned long tmp, *page_table;
@@ -204,7 +216,9 @@ unsigned long put_page(unsigned long page,unsigned long address)
 		printk("Trying to put page %p at %p\n",page,address);
 	if (mem_map[(page-LOW_MEM)>>12] != 1)
 		printk("mem_map disagrees with %p at %p\n",page,address);
+	// 获取页表地址
 	page_table = (unsigned long *) ((address>>20) & 0xffc);
+	// 判断页目录是否存在
 	if ((*page_table)&1)
 		page_table = (unsigned long *) (0xfffff000 & *page_table);
 	else {
@@ -213,6 +227,7 @@ unsigned long put_page(unsigned long page,unsigned long address)
 		*page_table = tmp|7;
 		page_table = (unsigned long *) tmp;
 	}
+	// 将物理地址映射到页表项中
 	page_table[(address>>12) & 0x3ff] = page | 7;
 /* no need for invalidate */
 	return page;
@@ -232,8 +247,10 @@ void un_wp_page(unsigned long * table_entry)
 		oom();
 	if (old_page >= LOW_MEM)
 		mem_map[MAP_NR(old_page)]--;
+    // 映射到新页面
 	*table_entry = new_page | 7;
 	invalidate();
+    // 复制内容
 	copy_page(old_page,new_page);
 }	
 
@@ -244,6 +261,7 @@ void un_wp_page(unsigned long * table_entry)
  *
  * If it's in code space we exit with a segment error.
  */
+// 无访问权限 页异常中断处理执行 写时复制
 void do_wp_page(unsigned long error_code,unsigned long address)
 {
 #if 0
@@ -252,6 +270,7 @@ void do_wp_page(unsigned long error_code,unsigned long address)
 	if (CODE_SPACE(address))
 		do_exit(SIGSEGV);
 #endif
+    // address 对应页面在页表中的页表项目指针
 	un_wp_page((unsigned long *)
 		(((address>>10) & 0xffc) + (0xfffff000 &
 		*((unsigned long *) ((address>>20) &0xffc)))));
@@ -363,6 +382,8 @@ static int share_page(unsigned long address)
 	return 0;
 }
 
+// 缺页异常处理 页目录或页表项的最后一位为0
+// address 引起出错的线性地址
 void do_no_page(unsigned long error_code,unsigned long address)
 {
 	int nr[4];
@@ -373,6 +394,7 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	address &= 0xfffff000;
 	tmp = address - current->start_code;
 	if (!current->executable || tmp >= current->end_data) {
+		// 申请新页内存，并将线性地址指向的页表项映射到新内存
 		get_empty_page(address);
 		return;
 	}
