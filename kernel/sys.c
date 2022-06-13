@@ -273,8 +273,10 @@ sem_t * sys_sem_open(const char *name, unsigned int value)
         sem_table[sem_table_nr].queue = NULL;
 
         return &(sem_table[sem_table_nr]);
-    } else
+    } else {
+        return &(sem_table[i]);
         printk("already have same sem\n");
+    }
     return NULL;
 }
 
@@ -302,6 +304,7 @@ int sys_sem_unlink(const char *name)
         for (j = i; j < sem_table_nr; j++)
             sem_table[j] = sem_table[j+1];
         sem_table_nr--;
+        printk("sem: %s unlinked\n", name);
     }
     return 0;
 }
