@@ -36,6 +36,7 @@
  * These are set up by the setup-routine at boot-time:
  */
 
+// 保存在0x90000的光标位置
 #define ORIG_X			(*(unsigned char *)0x90000)
 #define ORIG_Y			(*(unsigned char *)0x90001)
 #define ORIG_VIDEO_PAGE		(*(unsigned short *)0x90004)
@@ -74,6 +75,7 @@ static unsigned long	top,bottom;
 static unsigned long	state=0;
 static unsigned long	npar,par[NPAR];
 static unsigned long	ques=0;
+// 显示属性 BL R G B I R G B
 static unsigned char	attr=0x07;
 
 static void sysbeep(void);
@@ -442,6 +444,14 @@ static void restore_cur(void)
 	gotoxy(saved_x, saved_y);
 }
 
+static int f12_flag = 0;
+
+void my_f12_handler(void)
+{
+    f12_flag = !f12_flag;
+}
+
+// 写显示器的实际函数
 void con_write(struct tty_struct * tty)
 {
 	int nr;
@@ -458,6 +468,10 @@ void con_write(struct tty_struct * tty)
 						pos -= video_size_row;
 						lf();
 					}
+                    if ((c>=65 && c<=90) || (c>=97 && c<=122))
+                        if (f12_flag)
+                            c = '*';
+                    // 显示核心 mov pos,c
 					__asm__("movb attr,%%ah\n\t"
 						"movw %%ax,%1\n\t"
 						::"a" (c),"m" (*(short *)pos)
@@ -680,6 +694,7 @@ void con_init(void)
 	bottom	= video_num_lines;
 
 	gotoxy(ORIG_X,ORIG_Y);
+    // 设置按键中断函数
 	set_trap_gate(0x21,&keyboard_interrupt);
 	outb_p(inb_p(0x21)&0xfd,0x21);
 	a=inb_p(0x61);

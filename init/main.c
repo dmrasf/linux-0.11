@@ -194,6 +194,7 @@ void init(void)
 		if (!pid) {
 			close(0);close(1);close(2);
 			setsid();
+            // 显示器设备
 			(void) open("/dev/tty0",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);

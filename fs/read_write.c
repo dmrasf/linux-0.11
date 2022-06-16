@@ -80,6 +80,7 @@ int sys_read(unsigned int fd,char * buf,int count)
 	return -EINVAL;
 }
 
+// printf 执行的系统调用
 int sys_write(unsigned int fd,char * buf,int count)
 {
 	struct file * file;

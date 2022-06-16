@@ -58,6 +58,7 @@ struct tty_struct tty_table[] = {
 		INIT_C_CC},
 		0,			/* initial pgrp */
 		0,			/* initial stopped */
+        // 真正写显示器
 		con_write,
 		{0,0,0,0,""},		/* console read-queue */
 		{0,0,0,0,""},		/* console write-queue */
@@ -142,6 +143,7 @@ void wait_for_keypress(void)
 	sleep_if_empty(&tty_table[0].secondary);
 }
 
+// 处理按键中断
 void copy_to_cooked(struct tty_struct * tty)
 {
 	signed char c;
@@ -317,6 +319,7 @@ int tty_write(unsigned channel, char * buf, int nr)
 			}
 			b++; nr--;
 			cr_flag = 0;
+            // 将字符放到输出队列
 			PUTCH(c,tty->write_q);
 		}
 		tty->write(tty);

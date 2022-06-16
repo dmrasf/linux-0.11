@@ -92,6 +92,7 @@ static crw_ptr crw_table[]={
 	NULL,		/* /dev/lp */
 	NULL};		/* unnamed pipes */
 
+// 读写字符设备
 int rw_char(int rw,int dev, char * buf, int count, off_t * pos)
 {
 	crw_ptr call_addr;

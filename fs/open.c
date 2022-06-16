@@ -135,6 +135,7 @@ int sys_chown(const char * filename,int uid,int gid)
 	return 0;
 }
 
+// 打开文件，并链接到task_struct中
 int sys_open(const char * filename,int flag,int mode)
 {
 	struct m_inode * inode;
