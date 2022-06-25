@@ -33,6 +33,12 @@ struct stat {
 #define S_ISBLK(m)	(((m) & S_IFMT) == S_IFBLK)
 #define S_ISFIFO(m)	(((m) & S_IFMT) == S_IFIFO)
 
+#define S_IFPROC 0070000
+#define PROC_DEV_PSINFO 0
+#define PROC_DEV_HDINFO 1
+#define PROC_DEV_INODEINFO 2
+#define S_ISPROC(m)	(((m) & S_IFMT) == S_IFPROC)
+
 #define S_IRWXU 00700
 #define S_IRUSR 00400
 #define S_IWUSR 00200

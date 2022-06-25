@@ -218,6 +218,7 @@ sys_fork:
 	addl $20,%esp
 1:	ret
 
+# 硬盘读写中断处理
 hd_interrupt:
 	pushl %eax
 	pushl %ecx
@@ -249,6 +250,7 @@ hd_interrupt:
 	popl %eax
 	iret
 
+# 软盘读写中断处理
 floppy_interrupt:
 	pushl %eax
 	pushl %ecx

@@ -1,7 +1,7 @@
 /*
- *  linux/fs/read_write.c
+ *	linux/fs/read_write.c
  *
- *  (C) 1991  Linus Torvalds
+ *	(C) 1991  Linus Torvalds
  */
 
 #include <sys/stat.h>
@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <asm/segment.h>
+#include <stdarg.h>
 
 extern int rw_char(int rw,int dev, char * buf, int count, off_t * pos);
 extern int read_pipe(struct m_inode * inode, char * buf, int count);
@@ -52,6 +53,99 @@ int sys_lseek(unsigned int fd,off_t offset, int origin)
 	return file->f_pos;
 }
 
+extern int vsprintf();
+
+int sprintf(char *buf, const char *fmt, ...)
+{
+	va_list args;
+	int i;
+	va_start(args, fmt);
+	i = vsprintf(buf, fmt, args);
+	va_end(args);
+	return i;
+}
+
+#define PROC_BUF_SIZE 2048
+
+char *psinfo_buf = NULL;
+int psinfo_read(char * buf, int count, off_t * pos)
+{
+	int i;
+	int len = 0;
+	struct task_struct ** p;
+
+	if (!psinfo_buf) {
+		psinfo_buf = malloc(PROC_BUF_SIZE);
+		if (!psinfo_buf)
+			return -ENOMEM;
+
+		len += sprintf(psinfo_buf + len, "pid\tstate\tfather\tcounter\tstart_time\n");
+		for(p = &FIRST_TASK ; p <= &LAST_TASK ; ++p)
+			if (*p)
+				len += sprintf(psinfo_buf+len, "%ld\t%ld\t%ld\t%ld\t%ld\t\n",
+						(*p)->pid, (*p)->state, (*p)->father, (*p)->counter, (*p)->start_time);
+		psinfo_buf[len] = '\0';
+	}
+
+	for (i = 0; i < count; ++i) {
+		if ((*pos) >= PROC_BUF_SIZE)
+			return -EINVAL;
+		put_fs_byte(psinfo_buf[*pos], buf + i);
+		if (psinfo_buf[(*pos)++] == '\0') {
+			free(psinfo_buf);
+			psinfo_buf = NULL;
+			break;
+		}
+	}
+	return i;
+}
+
+char *hdinfo_buf = NULL;
+int hdinfo_read(char * buf, int count, off_t * pos)
+{
+	int i;
+	int len = 0;
+	struct super_block * sb;
+	struct buffer_head * bh;
+
+	if (!hdinfo_buf) {
+		hdinfo_buf = malloc(PROC_BUF_SIZE);
+		if (!hdinfo_buf)
+			return -ENOMEM;
+
+		sb = get_super(current->root->i_dev);
+
+		len += sprintf(hdinfo_buf + len, "Total block:\t%10d kB\n", sb->s_nzones);
+		len += sprintf(hdinfo_buf + len, "Total inodes:\t%10d kB\n", sb->s_ninodes);
+
+		hdinfo_buf[len] = '\0';
+	}
+
+	for (i = 0; i < count; ++i) {
+		if ((*pos) >= PROC_BUF_SIZE)
+			return -EINVAL;
+		put_fs_byte(hdinfo_buf[*pos], buf + i);
+		if (hdinfo_buf[(*pos)++] == '\0') {
+			free(hdinfo_buf);
+			hdinfo_buf = NULL;
+			break;
+		}
+	}
+	return i;
+}
+
+int proc_read(int dev, char * buf, int count, off_t * pos)
+{
+	if (dev == PROC_DEV_PSINFO)
+		return psinfo_read(buf, count, pos);
+	if (dev == PROC_DEV_HDINFO)
+		return hdinfo_read(buf, count, pos);
+	if (dev == PROC_DEV_INODEINFO) {
+		return 0;
+	}
+	return -EINVAL;
+}
+
 int sys_read(unsigned int fd,char * buf,int count)
 {
 	struct file * file;
@@ -69,6 +163,8 @@ int sys_read(unsigned int fd,char * buf,int count)
 		return rw_char(READ,inode->i_zone[0],buf,count,&file->f_pos);
 	if (S_ISBLK(inode->i_mode))
 		return block_read(inode->i_zone[0],&file->f_pos,buf,count);
+	if (S_ISPROC(inode->i_mode))
+		return proc_read(inode->i_zone[0],buf,count,&file->f_pos);
 	if (S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode)) {
 		if (count+file->f_pos > inode->i_size)
 			count = inode->i_size - file->f_pos;

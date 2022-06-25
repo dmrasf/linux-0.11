@@ -142,6 +142,7 @@ repeat:
 	add_request(major+blk_dev,req);
 }
 
+// 入口函数
 void ll_rw_block(int rw, struct buffer_head * bh)
 {
 	unsigned int major;
